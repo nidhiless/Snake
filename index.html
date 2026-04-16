@@ -1,0 +1,1576 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Snake — Pathfinding Lab</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0c10;
+            --surface: #111318;
+            --surface2: #181c23;
+            --border: rgba(255, 255, 255, 0.07);
+            --border2: rgba(255, 255, 255, 0.13);
+            --text: #e8eaf0;
+            --muted: #7a8090;
+            --accent: #00e5a0;
+            --accent2: #0af;
+            --warn: #ffb340;
+            --danger: #ff4f6a;
+            --purple: #a78bfa;
+            --cell: 22px;
+            --radius: 10px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Header ── */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 28px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+        }
+
+        .logo {
+            font-family: 'Space Mono', monospace;
+            font-size: 18px;
+            letter-spacing: -0.5px;
+        }
+
+        .logo span {
+            color: var(--accent);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--danger);
+            display: inline-block;
+            margin-right: 8px;
+            transition: background 0.3s;
+        }
+
+        .status-dot.online {
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+        }
+
+        .status-label {
+            font-size: 12px;
+            color: var(--muted);
+            font-family: 'Space Mono', monospace;
+        }
+
+        /* ── Layout ── */
+        .app {
+            display: flex;
+            flex: 1;
+            gap: 0;
+            overflow: hidden;
+        }
+
+        /* ── Sidebar Left ── */
+        .sidebar {
+            width: 240px;
+            min-width: 240px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 20px 16px;
+            gap: 20px;
+            overflow-y: auto;
+        }
+
+        .sidebar-section h3 {
+            font-family: 'Space Mono', monospace;
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: var(--muted);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        /* Scenario buttons */
+        .scenario-list {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .scenario-btn {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 9px 12px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.18s;
+            color: var(--text);
+            font-size: 13px;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .scenario-btn:hover {
+            border-color: var(--border2);
+            background: #1e2330;
+        }
+
+        .scenario-btn.active {
+            border-color: var(--accent);
+            background: rgba(0, 229, 160, 0.06);
+            color: var(--accent);
+        }
+
+        .scenario-btn .sb-name {
+            font-weight: 500;
+        }
+
+        .scenario-btn .sb-tag {
+            font-size: 10px;
+            font-family: 'Space Mono', monospace;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        .scenario-btn.active .sb-tag {
+            color: rgba(0, 229, 160, 0.6);
+        }
+
+        /* Algorithm override */
+        .algo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+        }
+
+        .algo-btn {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 7px 8px;
+            cursor: pointer;
+            font-size: 11px;
+            font-family: 'Space Mono', monospace;
+            color: var(--muted);
+            text-align: center;
+            transition: all 0.15s;
+        }
+
+        .algo-btn:hover {
+            color: var(--text);
+            border-color: var(--border2);
+        }
+
+        .algo-btn.active {
+            border-color: var(--accent2);
+            color: var(--accent2);
+            background: rgba(0, 170, 255, 0.07);
+        }
+
+        .algo-btn.auto {
+            grid-column: 1 / -1;
+            color: var(--accent);
+            border-color: rgba(0, 229, 160, 0.3);
+            background: rgba(0, 229, 160, 0.04);
+        }
+
+        .algo-btn.auto.active {
+            border-color: var(--accent);
+            background: rgba(0, 229, 160, 0.1);
+        }
+
+        /* Speed slider */
+        .speed-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .speed-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .speed-val {
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            color: var(--accent);
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 3px;
+            background: var(--border2);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            box-shadow: 0 0 6px var(--accent);
+        }
+
+        /* Controls */
+        .ctrl-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 9px 14px;
+            border-radius: 7px;
+            border: 1px solid var(--border2);
+            background: var(--surface2);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn:hover {
+            background: #1e2330;
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn.primary {
+            background: var(--accent);
+            color: #000;
+            border-color: var(--accent);
+            font-weight: 600;
+        }
+
+        .btn.primary:hover {
+            background: #00ffb0;
+        }
+
+        .btn.danger {
+            border-color: rgba(255, 79, 106, 0.4);
+            color: var(--danger);
+        }
+
+        .btn.danger:hover {
+            background: rgba(255, 79, 106, 0.1);
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* Grid size */
+        .grid-btns {
+            display: flex;
+            gap: 5px;
+        }
+
+        .size-btn {
+            flex: 1;
+            padding: 6px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--surface2);
+            color: var(--muted);
+            font-size: 12px;
+            font-family: 'Space Mono', monospace;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: center;
+        }
+
+        .size-btn:hover {
+            color: var(--text);
+            border-color: var(--border2);
+        }
+
+        .size-btn.active {
+            border-color: var(--purple);
+            color: var(--purple);
+            background: rgba(167, 139, 250, 0.07);
+        }
+
+        /* ── Main Canvas Area ── */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 28px 20px;
+            overflow-y: auto;
+            gap: 20px;
+        }
+
+        /* Score bar - secondary metrics slightly lighter */
+        .score-bar {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            max-width: 560px;
+        }
+
+        .score-card {
+            flex: 1;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px 16px;
+        }
+
+        .score-card .label {
+            font-size: 11px;
+            font-family: 'Space Mono', monospace;
+            color: var(--muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .score-card .value {
+            font-size: 22px;
+            font-family: 'Space Mono', monospace;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        /* Secondary metrics - lighter visual weight */
+        .score-card:nth-child(2) .value,
+        .score-card:nth-child(3) .value,
+        .score-card:nth-child(4) .value {
+            color: var(--muted);
+            font-weight: 500;
+        }
+
+        .score-card .value.blue {
+            color: var(--accent2);
+        }
+
+        .score-card .value.purple {
+            color: var(--purple);
+        }
+
+        .score-card .value.warn {
+            color: var(--warn);
+        }
+
+        /* Game grid */
+        #game-canvas {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            image-rendering: pixelated;
+            cursor: default;
+        }
+
+        /* ── Info Panel Right ── */
+        .info-panel {
+            width: 300px;
+            min-width: 300px;
+            background: var(--surface);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 20px 16px;
+            gap: 18px;
+            overflow-y: auto;
+        }
+
+        .info-panel h3 {
+            font-family: 'Space Mono', monospace;
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: var(--muted);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        /* Active algo badge */
+        .algo-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            padding: 12px 14px;
+        }
+
+        .algo-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent2);
+            flex-shrink: 0;
+            box-shadow: 0 0 8px var(--accent2);
+        }
+
+        .algo-name {
+            font-family: 'Space Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--accent2);
+        }
+
+        .algo-strategy {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        /* Explanation */
+        .explain-box {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 14px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #b0b8c8;
+        }
+
+        .explain-box .highlight {
+            color: var(--accent);
+            font-weight: 600;
+            background: rgba(0, 229, 160, 0.1);
+            padding: 0 2px;
+            border-radius: 3px;
+        }
+
+        /* Metrics - secondary info lighter */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .metric {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 10px 12px;
+        }
+
+        .metric .m-label {
+            font-size: 10px;
+            color: var(--muted);
+            font-family: 'Space Mono', monospace;
+            margin-bottom: 3px;
+        }
+
+        .metric .m-value {
+            font-size: 18px;
+            font-family: 'Space Mono', monospace;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .metric.accent .m-value {
+            color: var(--accent);
+        }
+
+        .metric.blue .m-value {
+            color: var(--accent2);
+        }
+
+        .metric.warn .m-value {
+            color: var(--warn);
+        }
+
+        .metric.purple .m-value {
+            color: var(--purple);
+        }
+
+        /* Lighten non-primary metrics */
+        .metric:not(.accent) .m-value {
+            color: var(--muted);
+            font-weight: 500;
+        }
+
+        /* Alternatives - simplified text */
+        .alt-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .alt-item {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .alt-name {
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .alt-stats {
+            font-size: 11px;
+            color: var(--muted);
+            text-align: right;
+        }
+
+        .alt-stats span {
+            display: block;
+        }
+
+        .alt-stats .time-ms {
+            display: none;
+        }
+
+        /* Hide time_ms line */
+        .alt-bar {
+            height: 3px;
+            background: var(--border2);
+            border-radius: 2px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+
+        .alt-bar-fill {
+            height: 100%;
+            border-radius: 2px;
+            background: var(--accent2);
+            transition: width 0.4s;
+        }
+
+        .alt-bar-fill.warn {
+            background: var(--warn);
+        }
+
+        .alt-bar-fill.danger {
+            background: var(--danger);
+        }
+
+        /* Scenario badge */
+        .scenario-badge {
+            background: rgba(167, 139, 250, 0.08);
+            border: 1px solid rgba(167, 139, 250, 0.25);
+            border-radius: 8px;
+            padding: 12px 14px;
+        }
+
+        .scenario-badge .sb-name {
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            color: var(--purple);
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .scenario-badge .sb-desc {
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        .scenario-badge .sb-why {
+            font-size: 11px;
+            color: rgba(167, 139, 250, 0.7);
+            margin-top: 6px;
+            font-style: italic;
+        }
+
+        .scenario-badge .sb-hint {
+            font-size: 10px;
+            color: var(--muted);
+            margin-top: 8px;
+            border-top: 1px solid var(--border);
+            padding-top: 6px;
+        }
+
+        /* Path viz (mini bar) */
+        .path-viz {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .path-step {
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+            background: var(--accent);
+            opacity: 0;
+            transition: opacity 0.1s;
+        }
+
+        .path-step.visible {
+            opacity: 0.7;
+        }
+
+        .path-step.head {
+            opacity: 1;
+            background: var(--accent2);
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 13px;
+            font-family: 'Space Mono', monospace;
+            color: var(--accent);
+            transition: transform 0.3s cubic-bezier(.34, 1.56, .64, 1);
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Game over overlay */
+        .game-over-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(10, 12, 16, 0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            display: none;
+            z-index: 10;
+        }
+
+        .game-over-overlay.visible {
+            display: flex;
+        }
+
+        .go-title {
+            font-family: 'Space Mono', monospace;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--danger);
+            margin-bottom: 8px;
+        }
+
+        .go-score {
+            font-size: 16px;
+            color: var(--muted);
+            margin-bottom: 12px;
+        }
+
+        .go-hint {
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 20px;
+        }
+
+        .canvas-wrap {
+            position: relative;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border2);
+            border-radius: 3px;
+        }
+
+        @media (max-width: 1100px) {
+            .info-panel {
+                display: none;
+            }
+        }
+
+        @media (max-width: 800px) {
+            .sidebar {
+                width: 200px;
+                min-width: 200px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="logo">AI <span>SNAKE</span> — Pathfinding Lab</div>
+        <div>
+            <span class="status-dot" id="status-dot"></span>
+            <span class="status-label" id="status-label">CONNECTING...</span>
+        </div>
+    </header>
+
+    <div class="app">
+
+        <!-- ── Sidebar ── -->
+        <aside class="sidebar">
+
+            <div class="sidebar-section">
+                <h3>Scenario</h3>
+                <div class="scenario-list" id="scenario-list"></div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Algorithm Override</h3>
+                <div class="algo-grid" id="algo-grid">
+                    <button class="algo-btn auto active" data-algo="auto">AUTO</button>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Grid Size</h3>
+                <div class="grid-btns" id="grid-btns">
+                    <button class="size-btn" data-size="12">12</button>
+                    <button class="size-btn active" data-size="18">18</button>
+                    <button class="size-btn" data-size="24">24</button>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Speed</h3>
+                <div class="speed-wrap">
+                    <div class="speed-row">
+                        <span style="font-size:13px;color:var(--muted)">Delay</span>
+                        <span class="speed-val" id="speed-val">200ms</span>
+                    </div>
+                    <input type="range" id="speed-slider" min="50" max="800" value="200" step="50">
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Controls</h3>
+                <div class="ctrl-row">
+                    <button class="btn primary" id="btn-start">Start</button>
+                    <button class="btn" id="btn-step" disabled>Step</button>
+                </div>
+                <div class="ctrl-row" style="margin-top:8px">
+                    <button class="btn danger" id="btn-reset">Reset</button>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- ── Main Canvas ── -->
+        <main class="main">
+            <div class="score-bar">
+                <div class="score-card">
+                    <div class="label">Score</div>
+                    <div class="value" id="score">0</div>
+                </div>
+                <div class="score-card">
+                    <div class="label">Steps</div>
+                    <div class="value blue" id="total-steps">0</div>
+                </div>
+                <div class="score-card">
+                    <div class="label">Paths Checked</div>
+                    <div class="value purple" id="total-evals">0</div>
+                </div>
+                <div class="score-card">
+                    <div class="label">Success %</div>
+                    <div class="value warn" id="success-rate">—</div>
+                </div>
+            </div>
+
+            <div class="canvas-wrap">
+                <canvas id="game-canvas"></canvas>
+                <div class="game-over-overlay" id="game-over">
+                    <div class="go-title">GAME OVER</div>
+                    <div class="go-score" id="go-score">Score: 0</div>
+                    <div class="go-hint">Press Reset to try again</div>
+                    <button class="btn primary" onclick="resetGame()">Play Again</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- ── Info Panel ── -->
+        <aside class="info-panel">
+
+            <div>
+                <h3>Active Algorithm</h3>
+                <div class="algo-badge">
+                    <div class="algo-dot"></div>
+                    <div>
+                        <div class="algo-name" id="algo-name">—</div>
+                        <div class="algo-strategy" id="algo-strategy">Waiting for first move...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h3>Explanation</h3>
+                <div class="explain-box" id="explain-box">
+                    The AI will explain each move once the simulation starts.
+                </div>
+            </div>
+
+            <div>
+                <h3>Move Metrics</h3>
+                <div class="metrics-grid">
+                    <div class="metric accent">
+                        <div class="m-label">Steps to Target</div>
+                        <div class="m-value" id="m-pathlen">—</div>
+                    </div>
+                    <div class="metric blue">
+                        <div class="m-label">Total Checks</div>
+                        <div class="m-value" id="m-evals">—</div>
+                    </div>
+                    <div class="metric warn">
+                        <div class="m-label">Direction</div>
+                        <div class="m-value" id="m-dir">—</div>
+                    </div>
+                    <div class="metric purple">
+                        <div class="m-label">Path Viz</div>
+                        <div class="m-value" style="font-size:11px;padding-top:3px;" id="m-success">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h3>Scenario Context</h3>
+                <div class="scenario-badge" id="scenario-badge">
+                    <div class="sb-name">—</div>
+                    <div class="sb-desc">Select a scenario to begin.</div>
+                </div>
+            </div>
+
+            <div>
+                <h3>Algorithm Comparison</h3>
+                <div class="alt-list" id="alt-list">
+                    <div style="font-size:12px;color:var(--muted)">Comparison appears after first move.</div>
+                </div>
+            </div>
+
+        </aside>
+
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════════════
+        // CONFIG
+        // ═══════════════════════════════════════════════════════════════════
+        const API = 'http://localhost:8000';
+        let GRID = 18;
+        let CELL = 28;
+        let PAD = 12;
+        let CANVAS_SIZE = GRID * CELL + PAD * 2;
+
+        // ═══════════════════════════════════════════════════════════════════
+        // STATE
+        // ═══════════════════════════════════════════════════════════════════
+        let snake = [], food = [], obstacles = [];
+        let running = false, dead = false;
+        let interval = null;
+        let score = 0, totalSteps = 0, totalEvals = 0;
+        let successCount = 0, moveCount = 0;
+        let lastPath = [];
+        let currentScenario = 'optimal';
+        let currentAlgo = 'auto';
+        let speed = 200;
+        let backendOnline = false;
+
+        // ═══════════════════════════════════════════════════════════════════
+        // CANVAS
+        // ═══════════════════════════════════════════════════════════════════
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            CANVAS_SIZE = GRID * CELL + PAD * 2;
+            canvas.width = CANVAS_SIZE;
+            canvas.height = CANVAS_SIZE;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // DRAW
+        // ═══════════════════════════════════════════════════════════════════
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Background
+            ctx.fillStyle = '#111318';
+            ctx.beginPath();
+            ctx.roundRect(0, 0, CANVAS_SIZE, CANVAS_SIZE, 12);
+            ctx.fill();
+
+            // Grid lines
+            ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+            ctx.lineWidth = 0.5;
+            for (let r = 0; r <= GRID; r++) {
+                ctx.beginPath();
+                ctx.moveTo(PAD, PAD + r * CELL);
+                ctx.lineTo(PAD + GRID * CELL, PAD + r * CELL);
+                ctx.stroke();
+            }
+            for (let c = 0; c <= GRID; c++) {
+                ctx.beginPath();
+                ctx.moveTo(PAD + c * CELL, PAD);
+                ctx.lineTo(PAD + c * CELL, PAD + GRID * CELL);
+                ctx.stroke();
+            }
+
+            // Path preview
+            const pathSet = new Set(lastPath.map(p => `${p[0]},${p[1]}`));
+            for (const p of lastPath) {
+                const x = PAD + p[1] * CELL, y = PAD + p[0] * CELL;
+                ctx.fillStyle = 'rgba(0,170,255,0.12)';
+                ctx.fillRect(x + 1, y + 1, CELL - 2, CELL - 2);
+            }
+
+            // Obstacles
+            for (const [r, c] of obstacles) {
+                const x = PAD + c * CELL, y = PAD + r * CELL;
+                ctx.fillStyle = '#2a1a2e';
+                ctx.beginPath();
+                ctx.roundRect(x + 2, y + 2, CELL - 4, CELL - 4, 3);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255,79,106,0.3)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                // X mark
+                ctx.strokeStyle = 'rgba(255,79,106,0.5)';
+                ctx.lineWidth = 1;
+                const m = 6;
+                ctx.beginPath();
+                ctx.moveTo(x + m, y + m); ctx.lineTo(x + CELL - m, y + CELL - m);
+                ctx.moveTo(x + CELL - m, y + m); ctx.lineTo(x + m, y + CELL - m);
+                ctx.stroke();
+            }
+
+            // Food
+            if (food.length === 2) {
+                const [fr, fc] = food;
+                const fx = PAD + fc * CELL + CELL / 2;
+                const fy = PAD + fr * CELL + CELL / 2;
+                const pulse = 0.85 + 0.15 * Math.sin(Date.now() / 300);
+                ctx.fillStyle = `rgba(0,229,160,${pulse})`;
+                ctx.beginPath();
+                ctx.arc(fx, fy, (CELL / 2 - 3) * pulse, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(0,229,160,0.3)';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(fx, fy, (CELL / 2) * pulse, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // Snake
+            for (let i = 0; i < snake.length; i++) {
+                const [r, c] = snake[i];
+                const x = PAD + c * CELL, y = PAD + r * CELL;
+                if (i === 0) {
+                    // Head
+                    ctx.fillStyle = dead ? '#ff4f6a' : '#00e5a0';
+                    ctx.beginPath();
+                    ctx.roundRect(x + 1, y + 1, CELL - 2, CELL - 2, 5);
+                    ctx.fill();
+                    // Eyes
+                    if (!dead) {
+                        ctx.fillStyle = '#000';
+                        ctx.beginPath();
+                        ctx.arc(x + CELL * 0.3, y + CELL * 0.35, 2, 0, Math.PI * 2);
+                        ctx.arc(x + CELL * 0.7, y + CELL * 0.35, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                } else {
+                    const alpha = 0.9 - (i / snake.length) * 0.5;
+                    ctx.fillStyle = `rgba(0,229,160,${alpha})`;
+                    ctx.beginPath();
+                    ctx.roundRect(x + 3, y + 3, CELL - 6, CELL - 6, 3);
+                    ctx.fill();
+                }
+            }
+
+            requestAnimationFrame(draw);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // GAME LOGIC
+        // ═══════════════════════════════════════════════════════════════════
+
+        function emptyCell() {
+            const snake_set = new Set(snake.map(s => `${s[0]},${s[1]}`));
+            const obs_set = new Set(obstacles.map(o => `${o[0]},${o[1]}`));
+            let r, c;
+            do {
+                r = Math.floor(Math.random() * GRID);
+                c = Math.floor(Math.random() * GRID);
+            } while (snake_set.has(`${r},${c}`) || obs_set.has(`${r},${c}`));
+            return [r, c];
+        }
+
+        const SCENARIO_GENERATORS = {
+            maze: generateMaze,
+            open: generateOpen,
+            danger: generateDanger,
+            deep: generateTunnels,
+            trap: generateTraps,
+            weighted: generateWeighted,
+            large: generateScattered,
+            optimal: generateModerate,
+        };
+
+        function generateMaze() {
+            const obs = [];
+            // Horizontal walls with gaps
+            for (let row of [4, 8, 12]) {
+                if (row >= GRID) continue;
+                for (let c = 0; c < GRID - 2; c++) {
+                    if (c % 5 !== 3) obs.push([row, c]);
+                }
+            }
+            return obs;
+        }
+
+        function generateOpen() {
+            const obs = [];
+            for (let i = 0; i < Math.floor(GRID * 0.3); i++) obs.push(emptyObstacle(obs));
+            return obs;
+        }
+
+        function generateDanger() {
+            const obs = [];
+            // Clustered groups
+            const centers = [[3, 3], [3, GRID - 4], [GRID - 4, 3], [GRID - 4, GRID - 4]];
+            for (const [cr, cc] of centers) {
+                for (let dr = -1; dr <= 1; dr++)
+                    for (let dc = -1; dc <= 1; dc++)
+                        if (cr + dr >= 0 && cr + dr < GRID && cc + dc >= 0 && cc + dc < GRID)
+                            obs.push([cr + dr, cc + dc]);
+            }
+            return obs;
+        }
+
+        function generateTunnels() {
+            const obs = [];
+            for (let c = 2; c < GRID - 2; c += 6) {
+                for (let r = 0; r < GRID; r++) {
+                    if (r % 3 !== 0) obs.push([r, c]);
+                }
+            }
+            return obs;
+        }
+
+        function generateTraps() {
+            const obs = [];
+            // U-shapes facing toward food spawn area
+            const traps = [[2, 5], [2, GRID - 8], [GRID - 5, 5]];
+            for (const [tr, tc] of traps) {
+                if (tr < 0 || tc < 0 || tr >= GRID || tc >= GRID) continue;
+                obs.push([tr, tc], [tr + 1, tc], [tr + 2, tc],
+                    [tr + 2, tc + 1], [tr + 2, tc + 2], [tr + 2, tc + 3],
+                    [tr + 1, tc + 3], [tr, tc + 3]);
+            }
+            return obs;
+        }
+
+        function generateWeighted() {
+            const obs = [];
+            for (let i = 0; i < Math.floor(GRID * 0.8); i++) obs.push(emptyObstacle(obs));
+            return obs;
+        }
+
+        function generateScattered() {
+            const obs = [];
+            for (let i = 0; i < Math.floor(GRID * 0.5); i++) obs.push(emptyObstacle(obs));
+            return obs;
+        }
+
+        function generateModerate() {
+            const obs = [];
+            for (let i = 0; i < Math.floor(GRID * 0.6); i++) obs.push(emptyObstacle(obs));
+            return obs;
+        }
+
+        function emptyObstacle(existing) {
+            const ex_set = new Set(existing.map(o => `${o[0]},${o[1]}`));
+            const snake_set = new Set(snake.map(s => `${s[0]},${s[1]}`));
+            let r, c, tries = 0;
+            do {
+                r = Math.floor(Math.random() * GRID);
+                c = Math.floor(Math.random() * GRID);
+                tries++;
+            } while ((ex_set.has(`${r},${c}`) || snake_set.has(`${r},${c}`)
+                || (Math.abs(r - snake[0][0]) < 3 && Math.abs(c - snake[0][1]) < 3))
+                && tries < 100);
+            return [r, c];
+        }
+
+        function initGame() {
+            const mid = Math.floor(GRID / 2);
+            snake = [[mid, mid], [mid, mid + 1], [mid, mid + 2]];
+            const gen = SCENARIO_GENERATORS[currentScenario] || generateModerate;
+            obstacles = gen().filter(([r, c]) => {
+                return !snake.some(([sr, sc]) => Math.abs(r - sr) + Math.abs(c - sc) < 2);
+            });
+            food = emptyCell();
+            score = 0; totalSteps = 0; totalEvals = 0;
+            successCount = 0; moveCount = 0;
+            dead = false;
+            lastPath = [];
+            document.getElementById('game-over').classList.remove('visible');
+            updateScoreBoard();
+            updateScenarioBadge();
+        }
+
+        function placeFood() {
+            food = emptyCell();
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // BACKEND + LOCAL FALLBACK
+        // ═══════════════════════════════════════════════════════════════════
+
+        async function checkBackend() {
+            try {
+                const r = await fetch(`${API}/health`, { signal: AbortSignal.timeout(1500) });
+                backendOnline = r.ok;
+            } catch { backendOnline = false; }
+            const dot = document.getElementById('status-dot');
+            const lbl = document.getElementById('status-label');
+            dot.className = 'status-dot' + (backendOnline ? ' online' : '');
+            lbl.textContent = backendOnline ? 'BACKEND ONLINE' : 'Running locally (limited AI)';
+        }
+
+        async function getNextMove() {
+            if (backendOnline) {
+                try {
+                    const body = {
+                        snake, food, obstacles,
+                        grid_size: GRID,
+                        algorithm: currentAlgo === 'auto' ? null : currentAlgo,
+                        scenario: currentScenario,
+                    };
+                    const r = await fetch(`${API}/move`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body),
+                        signal: AbortSignal.timeout(2000),
+                    });
+                    if (r.ok) return await r.json();
+                } catch (e) {
+                    backendOnline = false;
+                    document.getElementById('status-dot').className = 'status-dot';
+                    document.getElementById('status-label').textContent = 'Running locally (limited AI)';
+                }
+            }
+            return localMove();
+        }
+
+        // Local JS fallback (A* only)
+        function localMove() {
+            const res = localAstar();
+            const dir = res.path.length > 0
+                ? [res.path[0][0] - snake[0][0], res.path[0][1] - snake[0][1]]
+                : safeDirection();
+            return {
+                direction: dir,
+                algorithm: 'A* (local)',
+                path: res.path,
+                steps_evaluated: res.steps,
+                path_length: res.path.length,
+                strategy: 'Optimal path (heuristic + cost)',
+                explanation: 'Using basic pathfinding since backend is unavailable.',
+                alternatives: [],
+                scenario_info: null,
+            };
+        }
+
+        function localAstar() {
+            const start = [snake[0][0], snake[0][1]];
+            const goal = food;
+            const snake_set = new Set(snake.map(s => `${s[0]},${s[1]}`));
+            const obs_set = new Set(obstacles.map(o => `${o[0]},${o[1]}`));
+            const h = (a, b) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]);
+            const key = p => `${p[0]},${p[1]}`;
+
+            const open = [[h(start, goal), 0, start]];
+            const cameFrom = {};
+            const g = { [key(start)]: 0 };
+            let steps = 0;
+
+            while (open.length) {
+                open.sort((a, b) => a[0] - b[0]);
+                const [, gc, cur] = open.shift();
+                steps++;
+                if (cur[0] === goal[0] && cur[1] === goal[1]) {
+                    const path = [];
+                    let c = goal;
+                    while (key(c) !== key(start)) {
+                        path.push([...c]);
+                        c = cameFrom[key(c)];
+                    }
+                    return { path: path.reverse(), steps };
+                }
+                const DIRS4 = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+                for (const [dr, dc] of DIRS4) {
+                    const nb = [cur[0] + dr, cur[1] + dc];
+                    const nk = key(nb);
+                    if (nb[0] < 0 || nb[0] >= GRID || nb[1] < 0 || nb[1] >= GRID) continue;
+                    if (obs_set.has(nk) || (snake_set.has(nk) && nk !== key(start))) continue;
+                    const ng = gc + 1;
+                    if (ng < (g[nk] ?? Infinity)) {
+                        g[nk] = ng;
+                        cameFrom[nk] = cur;
+                        open.push([ng + h(nb, goal), ng, nb]);
+                    }
+                }
+                if (steps > GRID * GRID * 2) break;
+            }
+            return { path: [], steps };
+        }
+
+        function safeDirection() {
+            const snake_set = new Set(snake.map(s => `${s[0]},${s[1]}`));
+            const obs_set = new Set(obstacles.map(o => `${o[0]},${o[1]}`));
+            for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+                const nr = snake[0][0] + dr, nc = snake[0][1] + dc;
+                const nk = `${nr},${nc}`;
+                if (nr >= 0 && nr < GRID && nc >= 0 && nc < GRID && !obs_set.has(nk) && !snake_set.has(nk))
+                    return [dr, dc];
+            }
+            return [1, 0];
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // GAME TICK
+        // ═══════════════════════════════════════════════════════════════════
+
+        async function tick() {
+            if (dead) { stopGame(); return; }
+
+            const data = await getNextMove();
+            const [dr, dc] = data.direction;
+            const newHead = [snake[0][0] + dr, snake[0][1] + dc];
+
+            // Collision check
+            const snake_set = new Set(snake.map(s => `${s[0]},${s[1]}`));
+            const obs_set = new Set(obstacles.map(o => `${o[0]},${o[1]}`));
+            const nk = `${newHead[0]},${newHead[1]}`;
+
+            if (newHead[0] < 0 || newHead[0] >= GRID || newHead[1] < 0 || newHead[1] >= GRID
+                || obs_set.has(nk) || snake_set.has(nk)) {
+                dead = true;
+                document.getElementById('game-over').classList.add('visible');
+                document.getElementById('go-score').textContent = `Score: ${score}`;
+                stopGame();
+                return;
+            }
+
+            snake.unshift(newHead);
+            const ateFood = newHead[0] === food[0] && newHead[1] === food[1];
+            if (ateFood) {
+                score++;
+                placeFood();
+                showToast(`Nice — score is now ${score}`);
+            } else {
+                snake.pop();
+            }
+
+            // Path
+            lastPath = data.path || [];
+
+            // Stats
+            totalSteps++;
+            totalEvals += data.steps_evaluated || 0;
+            moveCount++;
+            if ((data.path || []).length > 0 || ateFood) successCount++;
+
+            updateScoreBoard();
+            updateInfoPanel(data);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // UI UPDATES
+        // ═══════════════════════════════════════════════════════════════════
+
+        function updateScoreBoard() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('total-steps').textContent = totalSteps;
+            document.getElementById('total-evals').textContent = totalEvals;
+            const rate = moveCount > 0 ? Math.round((successCount / moveCount) * 100) + '%' : '—';
+            document.getElementById('success-rate').textContent = rate;
+        }
+
+        function updateInfoPanel(data) {
+            document.getElementById('algo-name').textContent = data.algorithm || '—';
+            document.getElementById('algo-strategy').textContent = data.strategy || '';
+
+            // Clean explanation with highlighted key phrases
+            let expl = data.explanation || '';
+            expl = expl.replace(/\|/g, ' — ');
+
+            // Highlight key phrases
+            const highlightWords = ['clear path', 'safe route', 'no path', 'clear path quickly', 'reliable path'];
+            highlightWords.forEach(word => {
+                const regex = new RegExp(`(${word})`, 'gi');
+                expl = expl.replace(regex, '<span class="highlight">$1</span>');
+            });
+
+            document.getElementById('explain-box').innerHTML = expl;
+
+            document.getElementById('m-pathlen').textContent = data.path_length ?? '—';
+            document.getElementById('m-evals').textContent = data.steps_evaluated ?? '—';
+
+            // Show direction with text label
+            const dirMap = {
+                '-1,0': '↑ Up',
+                '1,0': '↓ Down',
+                '0,-1': '← Left',
+                '0,1': '→ Right'
+            };
+            document.getElementById('m-dir').innerHTML = dirMap[data.direction?.join(',')] || '—';
+
+            document.getElementById('m-success').textContent = data.path_length > 0 ? 'Path Found' : 'Fallback';
+
+            // Scenario badge with hint
+            if (data.scenario_info) {
+                const si = data.scenario_info;
+                document.getElementById('scenario-badge').innerHTML = `
+      <div class="sb-name">${si.name?.toUpperCase()}</div>
+      <div class="sb-desc">${si.description}</div>
+      <div class="sb-why">Best: <b>${si.best_algorithm}</b> — ${si.reason}</div>
+      <div class="sb-hint">💡 Best suited algorithm: ${si.best_algorithm?.toUpperCase()}</div>
+    `;
+            }
+
+            // Alternatives - simplified display (hide time_ms)
+            const alts = data.alternatives || [];
+            const maxSteps = Math.max(...alts.map(a => a.steps_evaluated || 0), 1);
+            const altHtml = alts.map(a => {
+                const ratio = Math.min(100, Math.round(((a.steps_evaluated || 0) / maxSteps) * 100));
+                const color = a.success ? 'accent2' : 'danger';
+                return `
+    <div class="alt-item">
+      <div>
+        <div class="alt-name">${a.algorithm}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${a.strategy || ''}</div>
+        <div class="alt-bar"><div class="alt-bar-fill ${a.success ? '' : 'danger'}" style="width:${ratio}%"></div></div>
+      </div>
+      <div class="alt-stats">
+        <span style="color:var(--${a.success ? 'accent' : 'danger'})">${a.success ? '✓' : '✗'} ${a.path_length} steps</span>
+        <span>${a.steps_evaluated || 0} checked</span>
+        <span class="time-ms">${a.time_ms || 0}ms</span>
+      </div>
+    </div>`;
+            }).join('');
+            document.getElementById('alt-list').innerHTML = altHtml || '<div style="font-size:12px;color:var(--muted)">No comparison data.</div>';
+        }
+
+        function updateScenarioBadge() {
+            const bestAlgo = {
+                optimal: 'A*',
+                maze: 'BFS',
+                open: 'Bidirectional',
+                danger: 'UCS',
+                deep: 'DFS',
+                trap: 'Simulated Annealing',
+                weighted: 'UCS',
+                large: 'Bidirectional',
+            };
+            const info = {
+                optimal: { name: 'OPTIMAL', desc: 'Clean grid with moderate obstacles — great for pathfinding' },
+                maze: { name: 'MAZE', desc: 'Tight maze with many dead ends — harder to navigate' },
+                open: { name: 'OPEN FIELD', desc: 'Wide open space with few obstacles — easy navigation' },
+                danger: { name: 'DANGER ZONES', desc: 'Risky areas clustered around the snake — careful pathfinding needed' },
+                deep: { name: 'TUNNELS', desc: 'Long narrow passages — requires deep exploration' },
+                trap: { name: 'TRAPS', desc: 'U-shaped pockets that can trap greedy algorithms' },
+                weighted: { name: 'WEIGHTED', desc: 'Cells have different movement costs — risk-aware routing' },
+                large: { name: 'LARGE GRID', desc: 'Maximum search space — efficient algorithms shine' },
+            };
+            const i = info[currentScenario] || info.optimal;
+            document.getElementById('scenario-badge').innerHTML = `
+    <div class="sb-name">${i.name}</div>
+    <div class="sb-desc">${i.desc}</div>
+    <div class="sb-hint">💡 Best suited algorithm: ${bestAlgo[currentScenario]}</div>
+  `;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // CONTROLS
+        // ═══════════════════════════════════════════════════════════════════
+
+        function startGame() {
+            if (running) return;
+            running = true;
+            document.getElementById('btn-start').disabled = true;
+            document.getElementById('btn-step').disabled = false;
+            interval = setInterval(tick, speed);
+        }
+
+        function stopGame() {
+            running = false;
+            clearInterval(interval);
+            document.getElementById('btn-start').disabled = false;
+            document.getElementById('btn-step').disabled = true;
+        }
+
+        function resetGame() {
+            stopGame();
+            resizeCanvas();
+            initGame();
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 1800);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // INIT UI
+        // ═══════════════════════════════════════════════════════════════════
+
+        const SCENARIOS = {
+            optimal: 'Optimal showcase',
+            maze: 'Maze (BFS)',
+            open: 'Open field (Bidir)',
+            danger: 'Danger zones (UCS)',
+            deep: 'Deep tunnels (DFS)',
+            trap: 'Traps (SA)',
+            weighted: 'Weighted (UCS)',
+            large: 'Large grid (Bidir)',
+        };
+
+        const ALGO_NAMES = {
+            auto: 'AUTO',
+            astar: 'A*',
+            bfs: 'BFS',
+            dfs: 'DFS',
+            ucs: 'UCS',
+            greedy: 'Greedy',
+            hill: 'Hill',
+            sa: 'Sim.Ann.',
+            ids: 'IDS',
+            bidir: 'Bidir',
+        };
+
+        function buildUI() {
+            // Scenarios
+            const sl = document.getElementById('scenario-list');
+            for (const [key, label] of Object.entries(SCENARIOS)) {
+                const btn = document.createElement('button');
+                btn.className = 'scenario-btn' + (key === currentScenario ? ' active' : '');
+                btn.dataset.scenario = key;
+                btn.innerHTML = `<div class="sb-name">${label.split('(')[0].trim()}</div>
+      <div class="sb-tag">${label.includes('(') ? label.match(/\((.+)\)/)[1] : key}</div>`;
+                btn.onclick = () => {
+                    currentScenario = key;
+                    document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    resetGame();
+                };
+                sl.appendChild(btn);
+            }
+
+            // Algorithms
+            const ag = document.getElementById('algo-grid');
+            for (const [key, name] of Object.entries(ALGO_NAMES)) {
+                if (key === 'auto') continue;
+                const btn = document.createElement('button');
+                btn.className = 'algo-btn';
+                btn.dataset.algo = key;
+                btn.textContent = name;
+                btn.onclick = () => {
+                    currentAlgo = key;
+                    document.querySelectorAll('.algo-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    showToast(`Switched to ${name}`);
+                };
+                ag.appendChild(btn);
+            }
+            document.querySelector('.algo-btn.auto').onclick = () => {
+                currentAlgo = 'auto';
+                document.querySelectorAll('.algo-btn').forEach(b => b.classList.remove('active'));
+                document.querySelector('.algo-btn.auto').classList.add('active');
+                showToast('Switched to AUTO mode');
+            };
+
+            // Grid sizes
+            document.querySelectorAll('.size-btn').forEach(btn => {
+                btn.onclick = () => {
+                    GRID = parseInt(btn.dataset.size);
+                    CELL = GRID <= 12 ? 36 : GRID <= 18 ? 28 : 22;
+                    document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    resetGame();
+                };
+            });
+
+            // Speed
+            const slider = document.getElementById('speed-slider');
+            slider.oninput = () => {
+                speed = parseInt(slider.value);
+                document.getElementById('speed-val').textContent = speed + 'ms';
+                if (running) {
+                    clearInterval(interval);
+                    interval = setInterval(tick, speed);
+                }
+            };
+
+            // Buttons
+            document.getElementById('btn-start').onclick = startGame;
+            document.getElementById('btn-step').onclick = () => { if (!running) tick(); };
+            document.getElementById('btn-reset').onclick = resetGame;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // BOOT
+        // ═══════════════════════════════════════════════════════════════════
+        buildUI();
+        resizeCanvas();
+        initGame();
+        checkBackend();
+        setInterval(checkBackend, 5000);
+        draw();
+    </script>
+</body>
+
+</html>
